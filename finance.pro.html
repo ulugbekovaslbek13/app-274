@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>Finance Pro & Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --red: #fb7185; --green: #4ade80; }
+        body { background: var(--bg); color: white; font-family: 'Inter', sans-serif; padding: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+        .card { background: var(--card); padding: 25px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .stats { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .stat-box { text-align: center; padding: 15px; border-radius: 10px; width: 30%; }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; }
+        button { width: 100%; padding: 12px; background: var(--accent); border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: #000; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #334155; }
+        .income { color: var(--green); }
+        .expense { color: var(--red); }
+        .export-btn { background: #64748b; color: white; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="stats">
+    <div class="stat-box" style="background: rgba(74, 222, 128, 0.1);">Daromad: <h2 class="green" id="totalIncome">0</h2></div>
+    <div class="stat-box" style="background: rgba(251, 113, 133, 0.1);">Xarajat: <h2 class="red" id="totalExpense">0</h2></div>
+    <div class="stat-box" style="background: rgba(56, 189, 248, 0.1);">Sof Foyda: <h2 id="netProfit">0</h2></div>
+</div>
+
+<div class="grid">
+    <div class="card">
+        <h3>Yangi Amaliyot</h3>
+        <input type="text" id="desc" placeholder="Nima uchun? (masalan: Sotuv yoki Ovqat)">
+        <input type="number" id="amount" placeholder="Summa (UZS)">
+        <select id="type">
+            <option value="income">Daromad (+)</option>
+            <option value="expense">Xarajat (-)</option>
+        </select>
+        <button onclick="addData()">QO'SHISH</button>
+        <button class="export-btn" onclick="exportToCSV()">EXCELGA YUKLASH (CSV)</button>
+    </div>
+
+    <div class="card">
+        <canvas id="myChart" height="100"></canvas>
+        <table>
+            <thead>
+                <tr>
+                    <th>Sana</th>
+                    <th>Tavsif</th>
+                    <th>Summa</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let data = JSON.parse(localStorage.getItem('finance_data')) || [];
+    let myChart;
+
+    function addData() {
+        const desc = document.getElementById('desc').value;
+        const amount = parseFloat(document.getElementById('amount').value);
+        const type = document.getElementById('type').value;
+
+        if (!desc || !amount) return alert("Ma'lumotlarni to'ldiring!");
+
+        data.push({ id: Date.now(), date: new Date().toLocaleDateString(), desc, amount, type });
+        updateAll();
+        document.getElementById('desc').value = '';
+        document.getElementById('amount').value = '';
+    }
+
+    function updateAll() {
+        localStorage.setItem('finance_data', JSON.stringify(data));
+        renderTable();
+        renderStats();
+        renderChart();
+    }
+
+    function renderTable() {
+        const body = document.getElementById('tableBody');
+        body.innerHTML = data.slice(-5).reverse().map(item => `
+            <tr>
+                <td>${item.date}</td>
+                <td>${item.desc}</td>
+                <td class="${item.type}">${item.type === 'income' ? '+' : '-'}${item.amount}</td>
+            </tr>
+        `).join('');
+    }
+
+    function renderStats() {
+        const inc = data.filter(d => d.type === 'income').reduce((s, i) => s + i.amount, 0);
+        const exp = data.filter(d => d.type === 'expense').reduce((s, i) => s + i.amount, 0);
+        document.getElementById('totalIncome').innerText = inc.toLocaleString() + " so'm";
+        document.getElementById('totalExpense').innerText = exp.toLocaleString() + " so'm";
+        document.getElementById('netProfit').innerText = (inc - exp).toLocaleString() + " so'm";
+    }
+
+    function renderChart() {
+        const inc = data.filter(d => d.type === 'income').reduce((s, i) => s + i.amount, 0);
+        const exp = data.filter(d => d.type === 'expense').reduce((s, i) => s + i.amount, 0);
+
+        if (myChart) myChart.destroy();
+        const ctx = document.getElementById('myChart').getContext('2d');
+        myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Daromad', 'Xarajat'],
+                datasets: [{
+                    data: [inc, exp],
+                    backgroundColor: ['#4ade80', '#fb7185'],
+                    borderWidth: 0
+                }]
+            }
+        });
+    }
+
+    function exportToCSV() {
+        let csvContent = "data:text/csv;charset=utf-8,Sana,Tavsif,Summa,Turi\n" 
+            + data.map(e => `${e.date},${e.desc},${e.amount},${e.type}`).join("\n");
+        window.open(encodeURI(csvContent));
+    }
+
+    updateAll();
+</script>
+
+</body>
+</html>
